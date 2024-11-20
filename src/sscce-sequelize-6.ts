@@ -21,13 +21,17 @@ export async function run() {
     },
   });
 
-  class Foo extends Model {}
+  class Foo extends Model<{ name: string; count: number }> {
+  }
 
   Foo.init({
     name: DataTypes.TEXT,
+    count: DataTypes.INTEGER,
   }, {
     sequelize,
     modelName: 'Foo',
+    timestamps: true,
+    paranoid: true,
   });
 
   // You can use sinon and chai assertions directly in your SSCCE.
@@ -36,6 +40,14 @@ export async function run() {
   await sequelize.sync({ force: true });
   expect(spy).to.have.been.called;
 
-  console.log(await Foo.create({ name: 'TS foo' }));
+  const foo = await Foo.create({ name: 'TS foo', count: 0 })
   expect(await Foo.count()).to.equal(1);
+
+  await foo.destroy();
+  expect(await Foo.count()).to.equal(0);
+
+  await Foo.increment(['count'], { where: { name: 'TS foo' } });
+
+  const deletedFoo = await Foo.findOne({ paranoid: false });
+  expect(deletedFoo!.dataValues.count).to.eq(0);
 }
